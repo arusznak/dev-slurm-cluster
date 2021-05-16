@@ -1,0 +1,221 @@
+#cloud-config
+
+users:
+    # a default user az az ubuntu, ez azért kell mert enélkül az első user a listában felülírja a default-ot, ami az ubuntu
+  - default
+  
+    # fontos, hogy a munge + slurm userek uid-ja ugyanaz legyen az összes node-on
+  - name: munge
+    uid: 1001
+  
+  - name: slurm
+    uid: 1002
+
+# az a kulcs pár amit a worker arra fog használni, hogy amikor felépül elküldje az ip-két a masternek és hogy leszedje slurm.conf-t a masterrol percenként
+ssh_keys:
+  rsa_private: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    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
+    -----END OPENSSH PRIVATE KEY-----
+
+# ez a publikus kulcs van belemásolva master-es leíróba, hogy a worker rátudjon tudjon vele kommunikálni ssh-val
+  rsa_public: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8Umz1WTGVQQkrOF4K8Gka9LU0UdHnbZyMMESLDU8lt+6VTqUFIfw00ASKaNPXKaDSQ5yIJ0a5i6CulVgSNw0cEsrpl0/CToJ+IcnTrTVsgLbjMnK7+deFCtUx74IWUc9DsK8Qgik8CwN0V6edK24abubh1sdofhKcCZ9PBX6doQW/dFiMSgtL3tFViYuPMGes7nDUJ5dP8M5clkJkV95h9K65DfGvrimTAwH2RZLGxdtkBfVhhdYjSyThVilrjyZDJvvHWcylh8qITiHROXmb5Q/YWzOnmXN8g9MmwS9evaRKkedVyhra+YRW93IeT+KhPCGPw9wVpKW+TJD35c/alro/dk6FUp4BZX2TrUzdegBs6XuA7JeKQF4B2YCpuLEfPadH4+OoB69dhX7ZwuoEndI9x2/yoXP82g4rtcmB/03/Ft9y80rXP1+Q2aRHNnwEBS7AK4Pbkyz0gV8z4fZjaSMb/vywrEaPayxUqt8QAaB2Lc5Jf96Kp/M/wdhVJC0= takacszs@manjaro
+
+# munge telepítése az authentikációhoz
+write_files:
+- path: /bin/install-munge.sh
+  content: |
+    #!/bin/bash
+    echo "==INSTALLING MUNGE started=="
+    apt update
+    apt install -y munge=0.5.13-2build1
+    echo "==INSTALLING MUNGE finished=="
+  permissions: '755'
+
+# amikor felépül a worker akkor egyből leszedi a masterről a munge.key-t, mert ennek a kulcsnak azonosnak kell lenni a cluster összes node-ján
+# # az ssh StrictHostKeyChecking no kikapcsolja a hostname checket, más szóval csatlakozáskor nem kell megerősítenünk, hogy megbízunk e a hostban
+- path: /bin/fetch-munge-key-from-master.sh
+  content: |
+    #!/bin/bash
+    echo "==FETCHING MUNGE.KEY FROM MASTER started=="
+    rsync -avzhe "ssh -o 'StrictHostKeyChecking no' -i /etc/ssh/ssh_host_rsa_key" munge@${master_ip}:/etc/munge/munge.key /etc/munge
+    echo "==FETCHING MUNGE.KEY FROM MASTER finished=="
+  permissions: '755'
+
+# néhány munge file permission, ownership beállítása
+# ezt követtem hozzá: https://github.com/dun/munge/wiki/Installation-Guide#securing-the-installation
+- path: /bin/set-munge-file-permissions.sh
+  content: |
+    #!/bin/bash
+    echo "==SETTING MUNGE FILE PERMISSIONS started=="
+    chown -R munge: /etc/munge/ /var/log/munge/ /var/lib/munge/ /run/munge/
+    chmod 0700 /etc/munge/ /var/log/munge/ /var/lib/munge/
+    chmod 0755 /run/munge/
+    chmod 0600 /etc/munge/munge.key
+    echo "==SETTING MUNGE FILE PERMISSIONS finished=="
+  permissions: '755'
+
+# munge service elindítása
+- path: /bin/start-munge-service.sh
+  content: |
+    #!/bin/bash
+    echo "==STARTING MUNGE SERVICE (munge) started=="
+    systemctl start munge
+    echo "==STARTING MUNGE SERVICE (munge) finished=="
+  permissions: '755'
+
+# slurm telepítése
+- path: /bin/install-slurm.sh
+  content: |
+    #!/bin/bash
+    echo "==INSTALLING SLURM started=="
+    apt install -y slurm-wlm=19.05.5-1
+    echo "==INSTALLING SLURM finished=="
+  permissions: '755'
+
+# néhány slurm file permission, ownership beállítása
+# vannak olyan directory-k amiket létrekell hozni előre, ilyen pl a /var/spool/slurmctld
+# ehhez is ad iranymutatast a dokumentacioja: https://slurm.schedmd.com/slurm.conf.html (file and directory permissions)
+- path: /bin/set-slurmd-file-permissions.sh
+  content: |
+    #!/bin/bash
+    echo "== SETTING SLURMD FILE PERMISSIONS started=="
+    chown ubuntu /etc/slurm-llnl/
+    mkdir /var/spool/slurmctld
+    chown slurm:slurm /var/spool/slurmctld
+    chmod 755 /var/spool/slurmctld
+    echo "== SETTING SLURMD FILE PERMISSIONS finished=="
+  permissions: '755'
+  
+# amint felépül a worker, elküldi a masternek a hostname-et és ip-jét
+# először létrehoz egy new-worker-ip-txt és abba teszi bele hostname-et és ip-t
+# beállítja a permission-öket és ownershipet
+# majd az egész fájlt küldi el a masternek és az ott lévő más workertől kapot new-worker-ip.xt felül fog íródni
+# az ssh StrictHostKeyChecking no kikapcsolja a hostname checket, más szóval csatlakozáskor nem kell megerősítenünk, hogy megbízunk e a hostban
+- path: /bin/send-host-ip-pair-to-master.sh
+  content: |
+    #!/bin/bash
+    echo "== SENDING HOST-IP PAIR TO MASTER started=="
+    echo "$(hostname -s) $(hostname -I)" | tee /etc/slurm-llnl/new-worker-ip.txt
+    chown ubuntu /etc/slurm-llnl/new-worker-ip.txt & chmod 644 /etc/slurm-llnl/new-worker-ip.txt
+    rsync -avzhe "ssh -o 'StrictHostKeyChecking no' -i /etc/ssh/ssh_host_rsa_key" /etc/slurm-llnl/new-worker-ip.txt ubuntu@${master_ip}:/etc/slurm-llnl/new-worker-ip.txt  
+    echo "== SENDING HOST-IP PAIR TO MASTER finished=="
+  permissions: '755'
+
+# üres known-worker-ip létrehozása és permission, ownership beállítás
+# üres, mert a percenként lefutó script (slurm-conf-checker) olvasni akarja és hibát dob ha nem létezik
+- path: /bin/create-empty-new-slurm-conf.sh
+  content: |
+    #!/bin/bash
+    echo "== CREATING EMPTY NEW SLURM CONF started=="
+    touch /etc/slurm-llnl/new-slurm.conf
+    chown ubuntu /etc/slurm-llnl/new-slurm.conf
+    chmod 644 /etc/slurm-llnl/new-slurm.conf  
+    echo "== CREATING EMPTY NEW SLURM CONF finished=="
+  permissions: '755'
+
+ # ugyanazért az okért, mint a new-slurm.conf 
+- path: /bin/create-empty-slurm-conf.sh
+  content: |
+    #!/bin/bash
+    echo "==CREATING SLURM CONFIG FILE started=="
+    touch /etc/slurm-llnl/slurm.conf
+    chown ubuntu /etc/slurm-llnl/slurm.conf
+    chmod 644 /etc/slurm-llnl/slurm.conf
+    echo "==CREATING SLURM CONFIG FILE finished=="
+  permissions: '755'
+
+# a slurmd service elindítása
+- path: /bin/start-slurmd-service.sh
+  content: |
+    #!/bin/bash
+    echo "== STARTING SLURM WORKER SERVICE (slurmd) started=="
+    systemctl start slurmd
+    echo "== STARTING SLURM WORKER SERVICE (slurmd) finished=="
+  permissions: '755'
+
+# a slurm-conf-checker script létrehozása
+# percenként csekkolja, hogy a master slurm.conf-ja ugyanaz e mint a sajátja
+# ha ugyanaz akkor átmásolja master slurmc.conf tartalmát a sajátjába
+# és a végén újraindítja a service-eket
+- path: /bin/slurm-conf-checker.sh
+  content: |
+    #!/bin/bash
+    OLD_SLURM_CONF=/etc/slurm-llnl/slurm.conf
+    NEW_SLURM_CONF=/etc/slurm-llnl/new-slurm.conf
+
+    # fetch slurm.conf from master and save it to new-slurm.conf
+    rsync -avzhe "ssh -o 'StrictHostKeyChecking no' -i /etc/ssh/ssh_host_rsa_key" ubuntu@${master_ip}:/etc/slurm-llnl/slurm.conf /etc/slurm-llnl/new-slurm.conf
+   
+    # if new-slurm.conf is different than slurm.conf
+    if [[ $(cat $OLD_SLURM_CONF) != $(cat $NEW_SLURM_CONF) ]]; then
+    
+    # copy the content of new-slurm.conf to slurm.conf
+    cp $NEW_SLURM_CONF $OLD_SLURM_CONF
+
+    # restart slurm service
+    sudo systemctl restart munge
+    sudo systemctl restart slurmd
+    
+    else echo "the content of slurm.conf is up to date"
+    fi
+  permissions: '744'
+
+# cron job létrehozása percenkénti lefutással
+- path: /bin/create-slurm-conf-checker-cron-job.sh
+  content: |
+    #!/bin/bash
+    echo "== CREATING SLURM CONFIG CHECKER CRON JOB started=="
+    echo "* * * * * root bash /bin/slurm-conf-checker.sh" | tee -a /etc/crontab
+    echo "== CREATING SLURM CONFIG CHECKER CRON JOB finished=="
+  permissions: '755'
+  
+runcmd:
+- echo "==== DEPLOYMENT started ===="
+- /bin/install-munge.sh
+- /bin/fetch-munge-key-from-master.sh
+- /bin/set-munge-file-permissions.sh
+- /bin/start-munge-service.sh
+- /bin/install-slurm.sh
+- /bin/send-host-ip-pair-to-master.sh
+- /bin/create-empty-new-slurm-conf.sh
+- /bin/create-empty-slurm-conf.sh
+- /bin/set-slurmd-file-permissions.sh
+- /bin/start-slurmd-service.sh
+- /bin/create-slurm-conf-checker-cron-job.sh
+- echo "==== DEPLOYMENT finished ===="

@@ -1,0 +1,2 @@
+user_name = "OPENSTACK USERNAME"
+password  = "OPENSTACK PASSWORD"

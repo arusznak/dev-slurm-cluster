@@ -1,0 +1,210 @@
+#cloud-config
+
+
+users:
+    # a default user az az ubuntu, ez azért kell mert enélkül az első user a listában felülírja a default-ot, ami az ubuntu
+  - default
+    # fontos, hogy a munge + slurm userek uid-ja ugyanaz legyen az összes node-on
+    
+  - name: munge
+    uid: 1001
+    # a worker public id-ja, hogy munge userként letudja szedni a munge.key-t
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8Umz1WTGVQQkrOF4K8Gka9LU0UdHnbZyMMESLDU8lt+6VTqUFIfw00ASKaNPXKaDSQ5yIJ0a5i6CulVgSNw0cEsrpl0/CToJ+IcnTrTVsgLbjMnK7+deFCtUx74IWUc9DsK8Qgik8CwN0V6edK24abubh1sdofhKcCZ9PBX6doQW/dFiMSgtL3tFViYuPMGes7nDUJ5dP8M5clkJkV95h9K65DfGvrimTAwH2RZLGxdtkBfVhhdYjSyThVilrjyZDJvvHWcylh8qITiHROXmb5Q/YWzOnmXN8g9MmwS9evaRKkedVyhra+YRW93IeT+KhPCGPw9wVpKW+TJD35c/alro/dk6FUp4BZX2TrUzdegBs6XuA7JeKQF4B2YCpuLEfPadH4+OoB69dhX7ZwuoEndI9x2/yoXP82g4rtcmB/03/Ft9y80rXP1+Q2aRHNnwEBS7AK4Pbkyz0gV8z4fZjaSMb/vywrEaPayxUqt8QAaB2Lc5Jf96Kp/M/wdhVJC0= takacszs@manjaro
+    
+    # a slurm user igazabol lehet nem is kell, mert én nem használom semmire a kódban, de több fájlnak is a slurm-öt kell megadni tulajdonosnak, szóval a slurm használja valószínűleg.
+  - name: slurm
+    uid: 1002
+
+# így hogy külön van megadva ez a default user (ubuntu) authorized_key fájljába fog kerülni, hogy ubuntuként letudja worker szedni a slurm.conf-ot
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8Umz1WTGVQQkrOF4K8Gka9LU0UdHnbZyMMESLDU8lt+6VTqUFIfw00ASKaNPXKaDSQ5yIJ0a5i6CulVgSNw0cEsrpl0/CToJ+IcnTrTVsgLbjMnK7+deFCtUx74IWUc9DsK8Qgik8CwN0V6edK24abubh1sdofhKcCZ9PBX6doQW/dFiMSgtL3tFViYuPMGes7nDUJ5dP8M5clkJkV95h9K65DfGvrimTAwH2RZLGxdtkBfVhhdYjSyThVilrjyZDJvvHWcylh8qITiHROXmb5Q/YWzOnmXN8g9MmwS9evaRKkedVyhra+YRW93IeT+KhPCGPw9wVpKW+TJD35c/alro/dk6FUp4BZX2TrUzdegBs6XuA7JeKQF4B2YCpuLEfPadH4+OoB69dhX7ZwuoEndI9x2/yoXP82g4rtcmB/03/Ft9y80rXP1+Q2aRHNnwEBS7AK4Pbkyz0gV8z4fZjaSMb/vywrEaPayxUqt8QAaB2Lc5Jf96Kp/M/wdhVJC0= takacszs@manjaro
+
+# munge telepítése az authentikációhoz
+write_files:
+- path: /bin/install-munge.sh
+  content: |
+    #!/bin/bash
+    echo "==INSTALLING MUNGE started=="
+    export DEBIAN_FRONTEND=noninteractive
+    apt update
+    apt install -y munge=0.5.13-2build1
+    echo "==INSTALLING MUNGE finished=="
+  permissions: '755'
+
+# néhány munge file permission, ownership beállítása
+# ezt követtem hozzá: https://github.com/dun/munge/wiki/Installation-Guide#securing-the-installation
+- path: /bin/set-munge-file-permissions.sh
+  content: |
+    #!/bin/bash
+    echo "==SETTING MUNGE FILE PERMISSIONS started=="
+    chown -R munge: /etc/munge/ /var/log/munge/ /var/lib/munge/ /run/munge/
+    chmod 0700 /etc/munge/ /var/log/munge/ /var/lib/munge/
+    chmod 0755 /run/munge/
+    chmod 0600 /etc/munge/munge.key
+    echo "==SETTING MUNGE FILE PERMISSIONS finished=="
+  permissions: '755'
+
+# munge service elindítása
+- path: /bin/start-munge-service.sh
+  content: |
+    #!/bin/bash
+    echo "==STARTING MUNGE SERVICE (munge) started=="
+    systemctl start munge
+    echo "==STARTING MUNGE SERVICE (munge) finished=="
+  permissions: '755'
+  
+# slurm telepítése
+- path: /bin/install-slurm.sh
+  content: |
+    #!/bin/bash
+    echo "==INSTALLING SLURM started=="
+    apt install -y slurm-wlm=19.05.5-1
+    echo "==INSTALLING SLURM finished=="
+  permissions: '755'
+
+# néhány slurm file permission, ownership beállítása
+# vannak olyan directory-k amiket létrekell hozni előre, ilyen pl a /var/spool/slurmctld
+# ehhez is ad iranymutatast a dokumentacioja: https://slurm.schedmd.com/slurm.conf.html (file and directory permissions)
+- path: /bin/set-slurmctld-file-permissions.sh
+  content: |
+    #!/bin/bash
+    echo "== SETTING SLURMCTLD FILE PERMISSIONS started=="
+    chown ubuntu /etc/slurm-llnl/
+    mkdir /var/spool/slurmctld
+    chown slurm:slurm /var/spool/slurmctld
+    chmod 755 /var/spool/slurmctld
+    echo "== SETTING SLURMCTLD FILE PERMISSIONS finished=="
+  permissions: '755'
+
+# üres known-worker-ip létrehozása és permission, ownership beállítás
+# üres, mert a percenként lefutó script (slurm-conf-populator) olvasni akarja és hibát dob ha nem létezik
+- path: /bin/create-empty-known-worker-ips.sh
+  content: |
+    #!/bin/bash
+    echo "==CREATING EMPTY KNOWN_WORKER_IPS started=="
+    touch /etc/slurm-llnl/known-worker-ips.txt
+    chown ubuntu /etc/slurm-llnl/known-worker-ips.txt
+    chmod 644 /etc/slurm-llnl/known-worker-ips.txt
+    echo "==CREATING EMPTY KNOWN_WORKER_IPS finished=="
+  permissions: '755'
+  
+# ugyanazért az okért, mint a known-worker-ip
+- path: /bin/create-empty-new-worker-ip.sh
+  content: |
+    #!/bin/bash
+    echo "==CREATING EMPTY KNOWN_WORKER_IPS started=="
+    touch /etc/slurm-llnl/new-worker-ip.txt
+    chown ubuntu /etc/slurm-llnl/new-worker-ip.txt
+    chmod 644 /etc/slurm-llnl/new-worker-ip.txt
+    echo "==CREATING EMPTY KNOWN_WORKER_IPS finished=="
+  permissions: '755'
+
+# a slurm.conf létrehozása és populálása
+# Az 1. sornál (SlurmctldHost) fontos, hogy megkapja az IP-címet is zárójelben, mert így az IP cím alapján fog tudni kommunikálni a masterrel a worker
+# ez az IP cím adás azért történik a scriptben, mert a Terraform nem tud saját attribútumára hivatkozni amikor felépül a resource, csak egy másik resource-éra tud, ezért történik ez a cloud-init szinten
+# a dokumentációban említettet config generátort használtam: https://slurm.schedmd.com/configurator.easy.html
+# egy módosítást kellett végrehajtanom generátor által készített configon a node listán kívül: a ProctrackType=proctrack/cgroup-ot változtattam ProctrackType=proctrack/linuxproc-ra ezt egy forumon találtam nem tudom pontosan hogy miért jobb a linuxproc, de cgroup errort dobott a cgrouppal és nem indult el a cluster
+# a végén pedig beállítjuk, hogy az ubuntu legyen a tulajdonosa és a permissionöket is, ez fontos, mert másképpen nem indul el a service
+# a file permission-ökhez iránymutatás elérhető a dokumentációban: https://slurm.schedmd.com/slurm.conf.html (file and directory permissions)
+- path: /bin/create-slurm-config-file.sh
+  content: |
+    #!/bin/bash
+    echo "==CREATING SLURM CONFIG FILE started=="
+    echo "# slurm.conf file generated by configurator easy.html.
+    # Put this file on all nodes of your cluster.
+    # See the slurm.conf man page for more information.
+    #
+    SlurmctldHost=slurm-master($(hostname -I | awk {'print $1'}))
+
+    MpiDefault=none
+    ProctrackType=proctrack/linuxproc
+    ReturnToService=1
+    SlurmctldPidFile=/var/run/slurmctld.pid
+    SlurmdPidFile=/var/run/slurmd.pid
+    SlurmdSpoolDir=/var/spool/slurmd
+    SlurmUser=slurm
+    StateSaveLocation=/var/spool/slurmctld
+    SwitchType=switch/none
+    TaskPlugin=task/affinity
+
+    # SCHEDULING
+    SchedulerType=sched/backfill
+    SelectType=select/cons_tres
+    SelectTypeParameters=CR_Core
+
+    # LOGGING AND ACCOUNTING
+    AccountingStorageType=accounting_storage/none
+    ClusterName=cluster
+    JobAcctGatherType=jobacct_gather/none
+
+    # COMPUTE NODES
+    PartitionName=debug Nodes="ALL" Default=YES MaxTime=INFINITE State=UP" | tee /etc/slurm-llnl/slurm.conf
+    chown ubuntu /etc/slurm-llnl/slurm.conf
+    chmod 644 /etc/slurm-llnl/slurm.conf
+    echo "==CREATING SLURM CONFIG FILE finished=="
+  permissions: '755'
+
+# A slurmctld service elindítása
+- path: /bin/start-slurmctld-service.sh
+  content: |
+    #!/bin/bash
+    echo "== STARTING SLURM MASTER SERVICE (slurmctld) started=="
+    systemctl start slurmctld
+    echo "== STARTING SLURM MASTER SERVICE (slurmctld) finished=="
+  permissions: '755'
+
+# a slurm-conf-populator script létrehozása
+# tulajdonképpen ez csinálja a skálázást, jelenleg egyelőre elég kezdetleges, mert csak felskálázni tud, mert a kilépő node-okról nem kap információt. Igazából leskálázni is tud, mert csak elérhetetlenné válik egy node, a slurm.conf ugyanaz marad minden node-on, működőképes marad a cluster, csak nem túl elegáns. Valamint ha utána megint felskálázunk, akkor egy új worker bekerül és mivel nincsen randomság a worker-ök nevében ezért a soron következő sorszám kerül be a nevébe és így 2x fog szerepelni ugyanaz a NodeName a slurm.conf-ban és így nem fog működni.
+# percenként csekkolja a saját worker hostname+ip listáját és ha kapott egy új ip-t egy workertől akkor hozzáadja a saját listájához
+# és hozzáadja a slurm.conf-hoz és újraindítja a slurmctld service-t mert máskülönben nem lép érvénybe az uj konfig
+# a slurm.confban a Node listában egy entrynek muszaj, hogy legyen NodeName-e (hostname -s) és az IP az opcionális, de ebben az esetben nagyon fontos, mert a DNS-t kiakarjuk hagyni.
+- path: /bin/slurm-conf-populator.sh
+  content: |
+    #!/bin/bash
+    KNOWN_WORKER_IPS=/etc/slurm-llnl/known-worker-ips.txt
+    NEW_WORKER_IP=/etc/slurm-llnl/new-worker-ip.txt
+    SLURM_CONF=/etc/slurm-llnl/slurm.conf
+
+    HOSTNAME=$(awk '{print $1}' $NEW_WORKER_IP)
+    IP=$(awk '{print $2}' $NEW_WORKER_IP)
+
+    # if the last line of the known worker ips is not the same as the entry in the ip-host-slurm-worker
+    # the ip-host-slurm-worker will always contain only one ip, because once a worker is online, it overrides this file with its own hostname+ip pair
+    if [[ $(tail -1 $KNOWN_WORKER_IPS) != $(cat $NEW_WORKER_IP) ]]; then
+
+    # append the known ip list with the new worker ip
+    cat $NEW_WORKER_IP | tee -a $KNOWN_WORKER_IPS 
+
+    # add the new node to slurm.conf
+    echo "NodeName=$HOSTNAME NodeAddr=$IP" | tee -a $SLURM_CONF 
+
+    # restart slurm service
+    sudo systemctl restart slurmctld
+
+    else echo "The node list in slurm.conf is already up to date"
+    fi
+  permissions: '744'
+
+# cron job létrehozása percenként lefutással
+- path: /bin/create-slurm-conf-populator-cron-job.sh
+  content: |
+    #!/bin/bash
+    echo "== CREATING SLURM CONFIG POPULATOR CRON JOB started=="
+    echo "* * * * * root bash /bin/slurm-conf-populator.sh" | tee -a /etc/crontab
+    echo "== CREATING SLURM CONFIG POPULATOR CRON JOB finished=="
+  permissions: '755'
+    
+runcmd:
+- echo "====DEPLOYMENT started===="
+- /bin/install-munge.sh
+- /bin/set-munge-file-permissions.sh
+- /bin/start-munge-service.sh
+- /bin/install-slurm.sh
+- /bin/create-empty-known-worker-ips.sh
+- /bin/create-empty-new-worker-ip.sh
+- /bin/create-slurm-config-file.sh
+- /bin/set-slurmctld-file-permissions.sh
+- /bin/start-slurmctld-service.sh
+- /bin/create-slurm-conf-populator-cron-job.sh
+- echo "====DEPLOYMENT finished===="
